@@ -37,7 +37,7 @@ Users simply **scan a QR code once** to link their WhatsApp account and immediat
 ### 1. Clone and setup
 
 ```bash
-git clone https://github.com/yourusername/whatsapp-gateway.git
+git clone https://github.com/rikurunico/whatsapp-gateway.git
 cd whatsapp-gateway
 cp .env.example .env
 # Edit .env with your configuration
