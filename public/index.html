@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Gateway | Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAABBElEQVQ4jcWRvUoDQRSFz5nZbEwKQYiVYGFhYS1YpdJH8T20sbG0s/MRfAGxsLMQO9EmKUSziYlunJljIURFNtkfC/HC1HMPfPcMXOAfkO7DQl3XAGCcc7AsS1ZVRQBgvFcQxzGklACAdV1hWRbM84woigAA0+n0BrsFWZYhCAIAQJ7nmKYJWmsppSQAtG2raZpiGAbUdd0IId45597hV4eu6xAEAaZpgm3bEEJo27Z5lmXvALBarV6FEE+e5x2eTpFlGZZlQdd1qKqKMAz1er2WjDHOOa+klPd1XZ93XQcA8H3/yDTNV8/znqWUVwCgKIqDPM9PlVIPAL631sN+pzP9OH4AL5R/LCX3ZVAAAAAASUVORK5CYII=">
+</head>
+<body>
+  <header>
+    <h1>📬 WhatsApp Gateway</h1>
+    <p>Self-hosted API for WhatsApp automation</p>
+  </header>
+
+  <main>
+    <section id="welcome" class="card">
+      <h2>Welcome to Your WhatsApp Gateway</h2>
+      <p>Connect your WhatsApp account by scanning a QR code, then use the API to send messages programmatically.</p>
+      <button id="create-session-btn" class="primary-btn">Create New Session</button>
+    </section>
+
+    <section id="sessions-container" class="hidden">
+      <h2>Your Sessions</h2>
+      <div id="sessions-list" class="cards-grid">
+        <!-- Session cards will be dynamically added here -->
+      </div>
+    </section>
+
+    <section id="qr-container" class="hidden card">
+      <h2>Connect to WhatsApp</h2>
+      <p>Scan this QR code with WhatsApp on your phone</p>
+      <div id="qr-code"></div>
+      <div class="api-key-container hidden" id="api-key-container">
+        <h3>Your API Key</h3>
+        <div class="code-container">
+          <code id="api-key-display"></code>
+          <button id="copy-api-key" class="icon-btn">📋</button>
+        </div>
+        <p class="warning">⚠️ Save this API key safely! It will only be shown once.</p>
+      </div>
+      <div class="buttons-container">
+        <button id="cancel-qr-btn" class="secondary-btn">Cancel</button>
+      </div>
+    </section>
+
+    <section id="session-details" class="hidden card">
+      <div class="session-header">
+        <h2 id="session-name">Session Name</h2>
+        <span id="connection-status" class="status">Disconnected</span>
+      </div>
+      
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="info">Info</button>
+        <button class="tab-btn" data-tab="messages">Messages</button>
+        <button class="tab-btn" data-tab="webhook">Webhook</button>
+        <button class="tab-btn" data-tab="test">Test</button>
+      </div>
+      
+      <div class="tab-content active" id="info-tab">
+        <div class="info-item">
+          <span class="label">Phone Number:</span>
+          <span id="phone-number">Not connected</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Session ID:</span>
+          <span id="session-id"></span>
+        </div>
+        <div class="info-item">
+          <span class="label">Created:</span>
+          <span id="created-at"></span>
+        </div>
+        <button id="regenerate-qr-btn" class="secondary-btn">Regenerate QR Code</button>
+        <button id="delete-session-btn" class="danger-btn">Delete Session</button>
+      </div>
+      
+      <div class="tab-content" id="messages-tab">
+        <div class="filters">
+          <select id="direction-filter">
+            <option value="">All Messages</option>
+            <option value="outgoing">Outgoing</option>
+            <option value="incoming">Incoming</option>
+          </select>
+          <input type="text" id="phone-filter" placeholder="Filter by phone...">
+          <button id="refresh-messages-btn" class="secondary-btn">Refresh</button>
+        </div>
+        <div class="messages-list" id="messages-list">
+          <!-- Messages will be loaded here -->
+        </div>
+        <div class="pagination">
+          <button id="prev-page" class="icon-btn">◀</button>
+          <span id="page-info">Page 1</span>
+          <button id="next-page" class="icon-btn">▶</button>
+        </div>
+      </div>
+      
+      <div class="tab-content" id="webhook-tab">
+        <p>Configure a webhook URL to receive incoming messages.</p>
+        <div class="form-group">
+          <label for="webhook-url">Webhook URL:</label>
+          <div class="input-group">
+            <input type="url" id="webhook-url" placeholder="https://your-server.com/webhook">
+            <button id="save-webhook-btn" class="primary-btn">Save</button>
+          </div>
+        </div>
+        <button id="test-webhook-btn" class="secondary-btn">Test Webhook</button>
+        <div id="webhook-test-result" class="hidden"></div>
+      </div>
+      
+      <div class="tab-content" id="test-tab">
+        <h3>Send Test Message</h3>
+        <div class="form-group">
+          <label for="test-recipient">Recipient:</label>
+          <input type="text" id="test-recipient" placeholder="Phone number with country code (e.g., 6281234567890)">
+        </div>
+        
+        <div class="form-group">
+          <label for="message-type">Message Type:</label>
+          <select id="message-type">
+            <option value="text">Text</option>
+            <option value="image">Image</option>
+            <option value="document">Document</option>
+          </select>
+        </div>
+        
+        <div class="form-group" id="text-message-input">
+          <label for="text-message">Message:</label>
+          <textarea id="text-message" rows="4" placeholder="Enter your message..."></textarea>
+        </div>
+        
+        <div class="form-group hidden" id="media-message-input">
+          <label for="media-url">Media URL:</label>
+          <input type="url" id="media-url" placeholder="https://example.com/image.jpg">
+          
+          <label for="media-caption">Caption (optional):</label>
+          <input type="text" id="media-caption" placeholder="Image caption...">
+        </div>
+        
+        <button id="send-test-message" class="primary-btn">Send Message</button>
+        <div id="send-result" class="hidden"></div>
+      </div>
+      
+      <div class="buttons-container">
+        <button id="back-to-sessions" class="secondary-btn">Back</button>
+      </div>
+    </section>
+
+    <section id="api-docs-link" class="card">
+      <h2>API Documentation</h2>
+      <p>Explore and test the API using Swagger UI documentation.</p>
+      <a href="/api-docs" target="_blank" class="primary-btn">Open API Docs</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>WhatsApp Gateway - Self-hosted API for WhatsApp automation</p>
+    <p><a href="https://github.com/yourusername/whatsapp-gateway" target="_blank">GitHub Repository</a></p>
+  </footer>
+  
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

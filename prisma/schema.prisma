@@ -1,0 +1,41 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  apiKey       String   @unique
+  phoneNumber  String?
+  name         String?
+  isActive     Boolean  @default(true)
+  webhookUrl   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  messages     Message[]
+}
+
+model Message {
+  id            String   @id @default(uuid())
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id])
+  direction     String   // "incoming" or "outgoing"
+  messageType   String   // "text", "image", "document", etc.
+  recipient     String   // Phone number for outgoing messages
+  sender        String?  // Phone number for incoming messages
+  content       String
+  mediaUrl      String?
+  caption       String?
+  status        String   // "pending", "sent", "delivered", "read", "failed"
+  whatsappId    String?  // The ID received from WhatsApp
+  failureReason String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

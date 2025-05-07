@@ -1,0 +1,40 @@
+{
+  "name": "whatsapp-gateway",
+  "version": "1.0.0",
+  "description": "A self-hosted WhatsApp Gateway built with Express.js, Prisma and Baileys",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "whatsapp",
+    "api",
+    "gateway",
+    "baileys",
+    "express",
+    "prisma"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^6.7.0",
+    "@whiskeysockets/baileys": "^6.5.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "pino": "^8.16.2",
+    "qrcode-terminal": "^0.12.0",
+    "swagger-ui-express": "^5.0.0",
+    "uuid": "^9.0.1",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "prisma": "^6.7.0"
+  }
+}

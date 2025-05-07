@@ -1,0 +1,651 @@
+openapi: 3.0.0
+info:
+  title: WhatsApp Gateway API
+  description: A self-hosted WhatsApp Gateway API for sending messages and receiving webhooks
+  version: 1.0.0
+  contact:
+    email: your-email@example.com
+servers:
+  - url: 'http://localhost:3000/api'
+    description: Local development server
+  - url: 'https://your-domain.com/api'
+    description: Production server
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Error message
+    TextMessage:
+      type: object
+      required:
+        - to
+        - type
+        - text
+      properties:
+        to:
+          type: string
+          description: Recipient phone number with country code, without +
+          example: '6281234567890'
+        type:
+          type: string
+          example: 'text'
+          enum: [text]
+        text:
+          type: string
+          description: Message content
+          example: 'Hello from WhatsApp Gateway API!'
+    MediaMessage:
+      type: object
+      required:
+        - to
+        - type
+        - url
+      properties:
+        to:
+          type: string
+          description: Recipient phone number with country code, without +
+          example: '6281234567890'
+        type:
+          type: string
+          example: 'image'
+          enum: [image, video, document, audio]
+        url:
+          type: string
+          description: URL to the media file
+          example: 'https://example.com/image.jpg'
+        caption:
+          type: string
+          description: Optional caption for the media
+          example: 'Check out this image!'
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phoneNumber:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        webhookUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum: [incoming, outgoing]
+        messageType:
+          type: string
+          enum: [text, image, video, document, audio]
+        recipient:
+          type: string
+        sender:
+          type: string
+          nullable: true
+        content:
+          type: string
+        mediaUrl:
+          type: string
+          nullable: true
+        caption:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, sent, delivered, read, failed, received]
+        whatsappId:
+          type: string
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    WebhookConfig:
+      type: object
+      required:
+        - webhookUrl
+      properties:
+        webhookUrl:
+          type: string
+          format: uri
+          example: 'https://your-server.com/webhook'
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /sessions:
+    post:
+      tags:
+        - Sessions
+      summary: Create a new WhatsApp session
+      description: Creates a new WhatsApp session and returns a QR code for scanning
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Optional name for the session
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Session created successfully'
+                  data:
+                    type: object
+                    properties:
+                      sessionId:
+                        type: string
+                        format: uuid
+                      apiKey:
+                        type: string
+                        description: Save this API key, it will only be shown once
+                      qrCode:
+                        type: string
+                        description: Base64-encoded QR code image to scan
+                      name:
+                        type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    get:
+      tags:
+        - Sessions
+      summary: Get all sessions
+      description: Get all sessions for the authenticated user
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/status/{sessionId}:
+    get:
+      tags:
+        - Sessions
+      summary: Get session status
+      description: Checks if a WhatsApp session is connected
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      connected:
+                        type: boolean
+                      phoneNumber:
+                        type: string
+                        nullable: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/qr/{sessionId}:
+    get:
+      tags:
+        - Sessions
+      summary: Regenerate QR code
+      description: Regenerates a QR code for an existing session
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: QR code regenerated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      sessionId:
+                        type: string
+                        format: uuid
+                      qrCode:
+                        type: string
+                        description: Base64-encoded QR code image to scan
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}:
+    delete:
+      tags:
+        - Sessions
+      summary: Delete a session
+      description: Deletes a WhatsApp session
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Session deleted successfully'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /messages/send:
+    post:
+      tags:
+        - Messages
+      summary: Send a WhatsApp message
+      description: Sends a text or media message via WhatsApp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/TextMessage'
+                - $ref: '#/components/schemas/MediaMessage'
+      responses:
+        '200':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Message sent successfully'
+                  data:
+                    type: object
+                    properties:
+                      messageId:
+                        type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /messages:
+    get:
+      tags:
+        - Messages
+      summary: Get message history
+      description: Gets message history with pagination and filtering
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: Number of messages to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Number of messages to skip
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [incoming, outgoing]
+          description: Filter by message direction
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, sent, delivered, read, failed, received]
+          description: Filter by message status
+        - name: recipient
+          in: query
+          schema:
+            type: string
+          description: Filter by recipient phone number
+        - name: sender
+          in: query
+          schema:
+            type: string
+          description: Filter by sender phone number
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      messages:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Message'
+                      pagination:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          limit:
+                            type: integer
+                          offset:
+                            type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /messages/{messageId}:
+    get:
+      tags:
+        - Messages
+      summary: Get a specific message
+      description: Gets details of a specific message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Message details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Message'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /webhooks/config:
+    post:
+      tags:
+        - Webhooks
+      summary: Configure webhook URL
+      description: Sets the webhook URL for receiving incoming messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookConfig'
+      responses:
+        '200':
+          description: Webhook configured successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Webhook configured successfully'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    get:
+      tags:
+        - Webhooks
+      summary: Get webhook configuration
+      description: Gets the current webhook configuration
+      responses:
+        '200':
+          description: Webhook configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      webhookUrl:
+                        type: string
+                        nullable: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - Webhooks
+      summary: Remove webhook configuration
+      description: Removes the webhook URL
+      responses:
+        '200':
+          description: Webhook removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Webhook removed successfully'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /webhooks/test:
+    post:
+      tags:
+        - Webhooks
+      summary: Test webhook
+      description: Tests the webhook configuration by sending a test payload
+      responses:
+        '200':
+          description: Webhook test successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Webhook test successful'
+                  data:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: integer
+                        example: 200
+                      response:
+                        type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

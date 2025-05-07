@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./sessions:/app/sessions
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/whatsapp_gateway
+      - API_KEY_SECRET=your-api-key-secret-change-this-in-production
+      - SESSION_FOLDER=/app/sessions
+    depends_on:
+      - postgres
+    networks:
+      - whatsapp_network
+
+  postgres:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=whatsapp_gateway
+    ports:
+      - "5432:5432"
+    networks:
+      - whatsapp_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  whatsapp_network:
+    driver: bridge
